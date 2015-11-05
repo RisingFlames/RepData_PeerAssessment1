@@ -1,25 +1,64 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+output: html_document
+date: "November 4, 2015"
 ---
 
+# Reproducible Research - Peer Assessment 1
 
 ## Loading and preprocessing the data
 
+Load the required libraries and then create two different data sets, one with the NA values included and one without. 
+```{r}
+library(dplyr)
+library(lattice)
+stepsDF_NA = read.csv("activity.csv")
+stepsDF_NA = tbl_df(stepsDF_NA)
+stepsDF = na.omit(stepsDF_NA)
+```
 
+## Mean, Median, Sum of Steps taken per day
 
-## What is mean total number of steps taken per day?
+Create a new data frame that contains the mean of the steps by date, then creating a barplot formatted to be presented as a histogram. Then the final table shows the mean, meadian, and sum by date.
+```{r}
+sumSteps = aggregate(steps ~ date, data = stepsDF, FUN = sum)
+barplot(sumSteps$steps,names.arg=sumSteps$date,space=0)
+stepsDF %>% group_by(date) %>% summarise(Mean=mean(steps), Median=median(steps), Sum=sum(steps))
+```
 
+## Average Daily Activity Pattern
 
+Create a new data frame that contains the mean of steps by interval and then plot them as a time series
+```{r}
+averageSteps = aggregate(steps ~ interval, data = stepsDF, FUN = mean)
+plot(averageSteps$interval,averageSteps$steps, type="l", xlab="5 Minute Intervals", ylab="Number of Steps", main="Average Daily Activiy")
+```
 
-## What is the average daily activity pattern?
+### The interval with the max average number of steps starts at 835 minutes and goes to 840 minutes
 
+## Imputing Missing Values
 
+First, count the number of NAs in the data set (2304). Then replace the NA values with the mean of average steps for the interval missing the data. Next create another barplot formatted as a histogram to present the data. Finally provide a table of the mean, median, and sum of the data set with the NAs replaced with imputed values.
+```{r}
+countNAs = sum(is.na(stepsDF_NA$steps))
+print(countNAs)
+stepsDF_NA_Replaced = stepsDF_NA
+stepsDF_NA_Replaced$steps[is.na(stepsDF_NA_Replaced$steps) & stepsDF_NA_Replaced$interval == averageSteps$interval] = averageSteps$steps
+sumSteps_NA_Replaced = aggregate(steps ~ date, data = stepsDF_NA_Replaced, FUN = sum)
+barplot(sumSteps_NA_Replaced$steps,names.arg=sumSteps_NA_Replaced$date,space=0)
+stepsDF_NA_Replaced %>% group_by(date) %>% summarise(Mean=mean(steps), Median=median(steps), Sum=sum(steps))
+```
+### The impact of imputing missing data on the estimates of the total daily number of steps is that there are now more days that are charted. However, for those days that were already charted, the values have not changed.
 
-## Imputing missing values
+## Differences in Activity Patterns Between Weekdays and Weekends
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+Add two new columsn to the data frame, the first to determine the day of the week and the second to calculate whether it is a weekday or weekend. Calculate the mean of the steps over the interval and type of day, then present it as a two row lattice panel plot
+```{r}
+stepsDF_NA_Replaced$weekday = weekdays(as.Date(stepsDF_NA_Replaced$date))
+myWeekend = c("Saturday","Sunday")
+myWeekdays = c("Monday","Tuesday","Wednesday","Thursday","Friday")
+stepsDF_NA_Replaced$typeofday[stepsDF_NA_Replaced$weekday %in% myWeekend] = "weekend"
+stepsDF_NA_Replaced$typeofday[stepsDF_NA_Replaced$weekday %in% myWeekdays] = "weekday"
+averageSteps_NA_Replaced = aggregate(steps ~ interval * typeofday, data = stepsDF_NA_Replaced, FUN = mean)
+xyplot(steps ~ interval | typeofday, data=averageSteps_NA_Replaced, layout=c(1,2),type="l")
+```
